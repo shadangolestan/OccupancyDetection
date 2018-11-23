@@ -55,7 +55,7 @@ def load_pcl_data():
 
 
 if __name__ == '__main__':
-    scores = [0.9781075, 0.9973242, 0.99027, 0.991243, 0.9837024]
+    scores = [0.90882975, 0.91218156, 0.90844667, 0.9051752, 0.88412184]
     score = np.asarray(scores, dtype=float)
 
     print("Average accuracy:", np.mean(scores))

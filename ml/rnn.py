@@ -1,59 +1,95 @@
-from numpy import *
-from numpy.random import *
-[0.7224519581610314, 0.8384821211384091, 0.7869131598151301, 0.8591583556312333, 0.6387740209194843]
-Average accuracy: 0.7691559231330576
-STD. DEV.: 0.08050165191968059
+import tensorflow as tf
+from tensorflow.python.ops import rnn, rnn_cell
+import numpy as np
+import data_loader
+from tqdm import tqdm
 
-def resample(weights):
-    n = len(weights)
-    indices = []
-    C = [0.] + [sum(weights[:i + 1]) for i in range(n)]
-    u0, j = random(), 0
-    for u in [(u0 + i) / n for i in range(n)]:
-        while u > C[j]:
-            j += 1
-        indices.append(j - 1)
-    return indices
+hm_epochs = 1000
+batch_size = 6 * 24
+rnn_size = 16
+i = 4
+
+SET = 1
+DATASET = ["ml", "pcl"]
+TRAINING_RATIO = 0.8
+
+# import some data to play with
+if SET == 0:
+    data_library = data_loader.load_data()
+elif SET == 1:
+    data_library = data_loader.load_pcl_data()
+else:
+    data_library = None
+x_total = data_library.data
+y_total = data_library.label
+
+chunk_size = x_total.shape[1]
+n_chunks = 1
+n_classes = 2
+
+num_lines = int(x_total.shape[0] * (1 - TRAINING_RATIO))
+start_pos = num_lines * i
+end_pos = min(start_pos + num_lines, x_total.shape[0])
+
+x_train = np.concatenate((x_total[:start_pos], x_total[end_pos:]), axis=0)
+one_col = np.concatenate((y_total[:start_pos], y_total[end_pos:]), axis=0)
+y_train = np.zeros((one_col.shape[0], 2))
+y_train[np.arange(one_col.shape[0]), one_col] = 1
+
+x_test = x_total[start_pos:end_pos]
+one_col = y_total[start_pos:end_pos]
+y_test = np.zeros((one_col.shape[0], 2))
+y_test[np.arange(one_col.shape[0]), one_col] = 1
+
+input_nodes = x_train.shape[1]
+x = tf.placeholder('float', [None, n_chunks, chunk_size])
+y = tf.placeholder('float')
 
 
-def particlefilter(sequence, pos, stepsize, n):
-    seq = iter(sequence)
-    x = ones((n, 2), int) * pos  # Initial position
-    f0 = seq.next()[tuple(pos)] * ones(n)  # Target colour model
-    yield pos, x, ones(n) / n  # Return expected position, particles and weights
-    for im in seq:
-        np.add(x, uniform(-stepsize, stepsize, x.shape), out=x, casting="unsafe")  # Particle motion model: uniform step
-        x = x.clip(zeros(2), array(im.shape) - 1).astype(int)  # Clip out-of-bounds particles
-        f = im[tuple(x.T)]  # Measure particle colours
-        w = 1. / (1. + (f0 - f) ** 2)  # Weight~ inverse quadratic colour distance
-        w /= sum(w)  # Normalize w
-        yield sum(x.T * w, axis=1), x, w  # Return expected position, particles and weights
-        if 1. / sum(w ** 2) < n / 2.:  # If particle cloud degenerate:
-            x = x[resample(w), :]  # Resample particles according to weights
+def recurrent_neural_network_model(x):
+    layer = {'weights': tf.Variable(tf.random_normal([rnn_size, n_classes])),
+             'biases': tf.Variable(tf.random_normal([n_classes]))}
+
+    x = tf.transpose(x, [1, 0, 2])
+    x = tf.reshape(x, [-1, chunk_size])
+    x = tf.split(x, n_chunks, 0)
+
+    lstm_cell = rnn_cell.BasicLSTMCell(rnn_size, state_is_tuple=True)
+    outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+
+    output = tf.matmul(outputs[-1], layer['weights']) + layer['biases']
+
+    return output
 
 
-if __name__ == "__main__":
+def train_neural_network(x):
+    prediction = recurrent_neural_network_model(x)
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=prediction, labels=y))
+    optimizer = tf.train.AdamOptimizer().minimize(cost)
 
-    ion()
-    seq = [im for im in zeros((20, 240, 320), int)]  # Create an image sequence of 20 frames long
-    x0 = array([120, 160])  # Add a square with starting position x0 moving along trajectory xs
-    xs = vstack((arange(20) * 3, arange(20) * 2)).T + x0
-    for t, x in enumerate(xs):
-        xslice = slice(x[0] - 8, x[0] + 8)
-        yslice = slice(x[1] - 8, x[1] + 8)
-        seq[t][xslice, yslice] = 255
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
 
-    for im, p in izip(seq, particlefilter(seq, x0, 8, 100)):  # Track the square through the sequence
-        pos, xs, ws = p
-        position_overlay = zeros_like(im)
-        position_overlay[np.array(pos).astype(int)] = 1
-        particle_overlay = zeros_like(im)
-        particle_overlay[tuple(xs.T)] = 1
-        draw()
-        time.sleep(0.3)
-        clf()  # Causes flickering, but without the spy plots aren't overwritten
-        imshow(im, cmap=cm.gray)  # Plot the image
-        spy(position_overlay, marker='.', color='b')  # Plot the expected position
-        spy(particle_overlay, marker=',', color='r')  # Plot the particles
-        display.clear_output(wait=True)
-        display.display(show())
+        for epoch in tqdm(range(hm_epochs)):
+            epoch_loss = 0
+            for i in range(int(x_train.shape[0] / batch_size)):
+                epoch_x = x_train[i * batch_size:(i + 1) * batch_size]
+                epoch_y = y_train[i * batch_size:(i + 1) * batch_size]
+                epoch_x = epoch_x.reshape((batch_size, n_chunks, chunk_size))
+
+                _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
+                epoch_loss += c
+
+            # print('Epoch', epoch + 1, 'completed out of', hm_epochs, 'loss:', epoch_loss)
+
+        correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
+
+        accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
+
+        print('Accuracy:', accuracy.eval({x: x_test.reshape((-1, n_chunks, chunk_size)), y: y_test}))
+        # sess.run([prediction, y], feed_dict={x: x_test, y: song_test_y})
+
+
+train_neural_network(x)
+
+scores = [0.90882975, 0.91218156, 0.90844667, 0.9051752, 0.88412184]

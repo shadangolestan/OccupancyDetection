@@ -8,9 +8,16 @@ EXACT_FIT_RATIO = 'auto'
 PENALTY_ERROR = 1
 KERNEL = 'linear'
 TRAINING_RATIO = 0.8
+SET = 1
+DATASET = ["ml", "pcl"]
 
 # import some data to play with
-data_library = data_loader.load_data()
+if SET == 0:
+    data_library = data_loader.load_data()
+elif SET == 1:
+    data_library = data_loader.load_pcl_data()
+else:
+    data_library = None
 x = data_library.data
 y = data_library.label
 svc = svm.SVC(kernel=KERNEL, C=PENALTY_ERROR, gamma=EXACT_FIT_RATIO)

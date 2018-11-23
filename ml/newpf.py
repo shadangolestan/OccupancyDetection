@@ -119,16 +119,23 @@ def sampled_particle_filter(px, gaussian, obs):
             # gaussian[col of feature][interval][occupancy X] = kde
             ws_t = 1
             for feature in range(obs.shape[1] - 1):
-                ws_t *= gaussian[feature][interval][x].pdf(obs[i, feature])
+                if gaussian[feature][interval][x] in (0, None):
+                    ws_t *= 0
+                else:
+                    ws_t *= gaussian[feature][interval][x].pdf(obs[i, feature])
 
             candidate_x.append(x)
             candidate_w.append(ws_t * prob)
 
-        candidate_w = np.asarray(candidate_w)
-        candidate_w /= np.sum(candidate_w)
-        candidate_w = np.reshape(candidate_w, (-1))
+        candidate_w = np.asarray(candidate_w, dtype=float)
+        if np.sum(candidate_w) != 0:
+            candidate_w /= np.sum(candidate_w)
+        else:
+            candidate_w = np.asarray(list(px[interval].values()), dtype=float)
 
+        candidate_w = np.reshape(candidate_w, (-1))
         result.append(np.random.choice(candidate_x, p=candidate_w))
+
     return np.asarray(result)
 
 

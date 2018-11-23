@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import data_loader
+from tqdm import tqdm
 
 n_classes = 2
 batch_size = 60 * 24
@@ -9,9 +10,16 @@ i = 4
 TRAINING_RATIO = 0.8
 layer_levels = 1
 layer_nodes = [75] * layer_levels
+SET = 1
+DATASET = ["ml", "pcl"]
 
 # import some data to play with
-data_library = data_loader.load_data()
+if SET == 0:
+    data_library = data_loader.load_data()
+elif SET == 1:
+    data_library = data_loader.load_pcl_data()
+else:
+    data_library = None
 x_total = data_library.data
 y_total = data_library.label
 
@@ -71,7 +79,7 @@ def train_neural_network(x):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
-        for epoch in range(hm_epochs):
+        for epoch in tqdm(range(hm_epochs)):
             epoch_loss = 0
             for i in range(int(x_train.shape[0] / batch_size)):
                 epoch_x = x_train[i * batch_size:(i + 1) * batch_size]
@@ -79,7 +87,7 @@ def train_neural_network(x):
                 _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
                 epoch_loss += c
 
-            print('Epoch', epoch + 1, 'completed out of', hm_epochs, 'loss:', epoch_loss)
+            # print('Epoch', epoch + 1, 'completed out of', hm_epochs, 'loss:', epoch_loss)
 
         correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
 
@@ -91,4 +99,4 @@ def train_neural_network(x):
 
 train_neural_network(x)
 
-scores = [0.9781075, 0.9973242, 0.99027, 0.991243, 0.9837024]
+scores = [0.91218156, 0.9100747, 0.90930855, 0.8851752, 0.88412184]

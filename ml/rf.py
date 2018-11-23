@@ -5,8 +5,16 @@ import numpy as np
 import data_loader
 
 TRAINING_RATIO = 0.8
+SET = 1
+DATASET = ["ml", "pcl"]
 
-data_library = data_loader.load_data()
+if SET == 0:
+    data_library = data_loader.load_data()
+elif SET == 1:
+    data_library = data_loader.load_pcl_data()
+else:
+    data_library = None
+
 x = data_library.data
 y = data_library.label
 
