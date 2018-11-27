@@ -3,7 +3,6 @@ import numpy as np
 import data_loader
 from tqdm import tqdm
 
-n_classes = 2
 batch_size = 60 * 24
 hm_epochs = 1000
 i = 4
@@ -23,18 +22,20 @@ else:
 x_total = data_library.data
 y_total = data_library.label
 
+n_classes = np.max(y_total) + 1
+
 num_lines = int(x_total.shape[0] * (1 - TRAINING_RATIO))
 start_pos = num_lines * i
 end_pos = min(start_pos + num_lines, x_total.shape[0])
 
 x_train = np.concatenate((x_total[:start_pos], x_total[end_pos:]), axis=0)
 one_col = np.concatenate((y_total[:start_pos], y_total[end_pos:]), axis=0)
-y_train = np.zeros((one_col.shape[0], 2))
+y_train = np.zeros((one_col.shape[0], n_classes))
 y_train[np.arange(one_col.shape[0]), one_col] = 1
 
 x_test = x_total[start_pos:end_pos]
 one_col = y_total[start_pos:end_pos]
-y_test = np.zeros((one_col.shape[0], 2))
+y_test = np.zeros((one_col.shape[0], n_classes))
 y_test[np.arange(one_col.shape[0]), one_col] = 1
 
 input_nodes = x_train.shape[1]

@@ -33,18 +33,21 @@ def load_data():
     return data_list
 
 
-def load_pcl_data():
+def load_pcl_data(binary=True, file_name="110107.csv"):
     data_list = Data()
-    with open("110107.csv", 'r') as input_file:
+    with open(file_name, 'r') as input_file:
         reader = csv.reader(input_file, delimiter=',')
         next(reader)
         for row in reader:
             if len(row) == 0:
                 continue
-            data_list.data.append(row[1:6] + row[7:])
+            data_list.data.append(row[1:5] + row[-2:])
             occupant = 0
-            if row[6] != '0':
-                occupant = 1
+            if row[-3] != '0':
+                if binary:
+                    occupant = 1
+                else:
+                    occupant = int(row[-3])
             data_list.label.append(occupant)
             curr_time = datetime.strptime(row[0], "%Y/%m/%d %H:%M")
             minute = curr_time.minute

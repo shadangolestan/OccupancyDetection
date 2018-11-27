@@ -3,10 +3,11 @@ from tensorflow.python.ops import rnn, rnn_cell
 import numpy as np
 import data_loader
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
-hm_epochs = 1000
-batch_size = 6 * 24
-rnn_size = 16
+hm_epochs = 30000
+batch_size = 6 * 24 * 7
+rnn_size = 64
 i = 4
 
 SET = 1
@@ -17,15 +18,16 @@ TRAINING_RATIO = 0.8
 if SET == 0:
     data_library = data_loader.load_data()
 elif SET == 1:
-    data_library = data_loader.load_pcl_data()
+    data_library = data_loader.load_pcl_data(binary=False)
 else:
     data_library = None
 x_total = data_library.data
 y_total = data_library.label
 
+n_classes = np.max(y_total) + 1
+
 chunk_size = x_total.shape[1]
 n_chunks = 1
-n_classes = 2
 
 num_lines = int(x_total.shape[0] * (1 - TRAINING_RATIO))
 start_pos = num_lines * i
@@ -33,12 +35,12 @@ end_pos = min(start_pos + num_lines, x_total.shape[0])
 
 x_train = np.concatenate((x_total[:start_pos], x_total[end_pos:]), axis=0)
 one_col = np.concatenate((y_total[:start_pos], y_total[end_pos:]), axis=0)
-y_train = np.zeros((one_col.shape[0], 2))
+y_train = np.zeros((one_col.shape[0], n_classes))
 y_train[np.arange(one_col.shape[0]), one_col] = 1
 
 x_test = x_total[start_pos:end_pos]
 one_col = y_total[start_pos:end_pos]
-y_test = np.zeros((one_col.shape[0], 2))
+y_test = np.zeros((one_col.shape[0], n_classes))
 y_test[np.arange(one_col.shape[0]), one_col] = 1
 
 input_nodes = x_train.shape[1]
@@ -88,6 +90,16 @@ def train_neural_network(x):
 
         print('Accuracy:', accuracy.eval({x: x_test.reshape((-1, n_chunks, chunk_size)), y: y_test}))
         # sess.run([prediction, y], feed_dict={x: x_test, y: song_test_y})
+
+        a, b = sess.run([prediction, y], feed_dict={x: x_test.reshape((-1, n_chunks, chunk_size)), y: y_test})
+
+        np.save("rnnresult.npy", a)
+        np.save("rnntruth.npy", b)
+
+        # x_values = np.arange(prediction.shape[0])
+        # plt.plot(x_values, prediction)
+        # plt.plot(x_values, ground_truth)
+        # plt.show()
 
 
 train_neural_network(x)

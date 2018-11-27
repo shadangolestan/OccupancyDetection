@@ -5,14 +5,16 @@ from scipy.stats.kde import gaussian_kde
 from scipy import stats
 from tqdm import tqdm
 
-TRAINING_RATIO = 0.8
+TRAINING_RATIO = 0.2
+DOMAIN_ADAPTATION = True
+SEMI_SUPERVISED = True
 TIME_INTERVAL = [0, 6 * 60, 18 * 60, 24 * 60 + 1]
-PARTICLES = 100
+PARTICLES = 1000
 PLOT_PDF = False
 SET = 1
 DATASET = ["ml", "pcl"]
 LABELS = [["Temperature", "Humidity", "Light", "CO2", "HumidityRatio"],
-          ["TL1", "TL3", "TL5", "TL6", "TL8", "temperature", "cloudCover"]]
+          ["TL1", "TL3", "TL5", "TL6", "temperature", "cloudCover"]]
 
 
 # linear
@@ -141,7 +143,7 @@ def sampled_particle_filter(px, gaussian, obs):
 
 def particle_filter(px, gaussian, obs):
     result = []
-    for i in tqdm(range(obs.shape[0])):
+    for i in range(obs.shape[0]):
         candidate_x = []
         candidate_w = []
 
@@ -152,7 +154,10 @@ def particle_filter(px, gaussian, obs):
             # gaussian[col of feature][interval][occupancy X] = kde
             ws_t = 1
             for feature in range(obs.shape[1] - 1):
-                ws_t *= gaussian[feature][interval][xs_t].pdf(obs[i, feature])
+                if gaussian[feature][interval][xs_t] in (0, None):
+                    ws_t *= 0
+                else:
+                    ws_t *= gaussian[feature][interval][xs_t].pdf(obs[i, feature])
 
             candidate_x.append(xs_t)
             candidate_w.append(ws_t)
@@ -177,15 +182,34 @@ elif SET == 1:
     data_library = data_loader.load_pcl_data()
 else:
     data_library = None
+
 x = data_library.data
 y = data_library.label
 x = np.concatenate((x, np.reshape(data_library.date, (-1, 1))), axis=1)
 
 num_lines = int(x.shape[0] * (1 - TRAINING_RATIO))
 
+if DOMAIN_ADAPTATION:
+    data_library = data_loader.load_pcl_data(file_name="110118.csv")
+    x_source = data_library.data
+    y_source = data_library.label
+    x_source = np.concatenate((x_source, np.reshape(data_library.date, (-1, 1))), axis=1)
+
+    if not SEMI_SUPERVISED:
+        num_lines = 0
+    else:
+        num_lines = int(x.shape[0] * TRAINING_RATIO)
+
 scores = []
 
-for i in range(int(1 // (1 - TRAINING_RATIO))):
+num_loops = int(1 // (1 - TRAINING_RATIO))
+if DOMAIN_ADAPTATION:
+    if SEMI_SUPERVISED:
+        num_loops = int(1 // TRAINING_RATIO)
+    else:
+        num_loops = 1
+
+for i in range(num_loops):
     start_pos = num_lines * i
     end_pos = min(start_pos + num_lines, x.shape[0])
 
@@ -195,8 +219,19 @@ for i in range(int(1 // (1 - TRAINING_RATIO))):
     x_test = x[start_pos:end_pos]
     y_test = y[start_pos:end_pos]
 
+    if DOMAIN_ADAPTATION:
+        temp = x_train
+        x_train = x_test
+        x_test = temp
+        temp = y_train
+        y_train = y_test
+        y_test = temp
+
+        x_train = np.concatenate((x_source, x_train), axis=0)
+        y_train = np.concatenate((y_source, y_train), axis=0)
+
     px = motion_model(x_train, y_train)
-    gaussian = sensor_model(x, y)
+    gaussian = sensor_model(x_train, y_train)
 
     y_result = sampled_particle_filter(px, gaussian, x_test)
 
