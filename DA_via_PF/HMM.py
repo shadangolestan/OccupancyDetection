@@ -282,7 +282,7 @@ class HMM():
                     T2[j][i] = np.argmax(T1[:, i-1]*self.A[:, j]*self.B[j].get_prob(s[i]))
             
             z = np.zeros(len(s), dtype=int)
-            x = np.zeros(len(s))
+            x = np.zeros(len(s), dtype=int)
             
             T = len(s) - 1
             z[T] = np.argmax(T1[:, T])

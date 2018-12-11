@@ -90,7 +90,7 @@ class Cluster():
     def predict(self, data, seqs, pf=None):
         result = []
         for s in seqs:
-            result.append(np.zeros(s[1]-s[0]))
+            result.append(np.zeros(s[1]-s[0], dtype=int))
             
         if pf == None:
             for i in range(self.number_of_hidd_states):
@@ -98,14 +98,14 @@ class Cluster():
                 x = self.hmms[i].viterbi_predict(emi_seqs)
                 for j in range(len(seqs)):
                     for k in range(len(index_seqs[j])):
-                        result[j][index_seqs[j][k]] = x[j][k]
+                        result[j][index_seqs[j][k]-seqs[j][0]] = x[j][k]
         else:
             for i in range(self.number_of_hidd_states):
                 index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
                 x = self.hmms[i].pf_predict(emi_seqs, pf['NP'], self.hmms[i].A, None)
                 for j in range(len(seqs)):
                     for k in range(len(index_seqs[j])):
-                        result[j][index_seqs[j][k]] = x[j][k]
+                        result[j][index_seqs[j][k]-seqs[j][0]] = x[j][k]
             
         return result
 if __name__ == '__main__':

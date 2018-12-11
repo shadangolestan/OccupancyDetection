@@ -53,7 +53,7 @@ def get_performance(actual, prediction):
     tnr = 100*tn/(1.*(tn+fp+e))
     fnr = 100*fn/(1.*(fn+tp+e))
     
-    precision = tp/(1.*(tp+fp+e))
+    precision = 100*tp/(1.*(tp+fp+e))
     recall = tpr
     
     accuracy /= (1.*len(actual))
@@ -71,15 +71,17 @@ def get_performance_seq(actual, prediction):
             result[key] += x[key]
     for key in result:
         result[key] /= (1.*len(actual))
+    #print(prediction)
     return result
     
-def get_actual(data, seqs):
+def get_actual(data, seqs, cluster):
     actual = []
     for s in seqs:
         x = []
         for i in range(s[0], s[1]):
-            x.append(data[i][OCC])
+            x.append(cluster.get_occu_index(data[i][OCC]))
         actual.append(x)
+    #print(actual)
     return actual
 
 def get_data(room, Name):
@@ -93,8 +95,7 @@ def get_data(room, Name):
         room_data[i][Weekday] = float(emi_data[i][2])
         room_data[i][Holiday] = float(emi_data[i][3])
         room_data[i][EMI] = float(emi_data[i][4])
-        if float(occ_data[i][0]) > 0.0:
-            room_data[i][OCC] = 1.0
+        room_data[i][OCC] = float(occ_data[i][0])
     return room_data
 ###############################################Testing#############################
 source = get_data(1, 'co2')
@@ -103,7 +104,7 @@ target = get_data(4, 'co2')
 source_cluster = clus.Cluster()
 target_cluster = clus.Cluster()
 
-seqs = [[0, 4880]]
+seqs = [[16300, 17000]]
 
 source_cluster.learn(source, seqs)
-print(get_performance_seq(get_actual(source, [[0, 1000]]), source_cluster.predict(source, [[0, 1000]])))
+print(get_performance_seq(get_actual(source, [[16300, 17000]], source_cluster), source_cluster.predict(source, [[16300, 17000]])))
