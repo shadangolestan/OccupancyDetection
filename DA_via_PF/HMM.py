@@ -93,7 +93,10 @@ class HMM():
             obj = emission_type[0](emission_type[1])
             self.B.append(obj)
 
-    def supervised_learn(self, hidd_seqs, emi_seqs):
+    def supervised_learn(self, hidd_seqs, emi_seqs, prior=None):
+        if prior != None:
+            self.A = np.copy(prior[0])
+            self.PI = np.copy(prior[2])
         ###################Learning A and PI##############
         for i in hidd_seqs:
             self.PI_count[i[0]] += 1

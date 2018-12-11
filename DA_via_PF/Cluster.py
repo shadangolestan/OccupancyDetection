@@ -57,11 +57,14 @@ class Cluster():
     def get_data_seqs(self, data, seqs, hmm_index):
         hidd_seqs = []
         emi_seqs = []
+        index_seqs = []
         for s in seqs:
             hidd = []
             emi = []
+            index = []
             for j in range(s[0], s[1]):
                 if self.get_hmm_index(data[j][da.Hour]) == hmm_index:
+                    index.append(j)
                     hidd.append(self.get_occu_index(data[j][da.OCC]))
                     if self.emission_name == 'Categorical':
                         emi.append(self.get_emi_index(data[j][da.EMI]))
@@ -70,35 +73,42 @@ class Cluster():
 
             hidd_seqs.append(hidd)
             emi_seqs.append(emi)
+            index_seqs.append(index)
 
-        return (hidd_seqs, emi_seqs)
+        return (index_seqs, hidd_seqs, emi_seqs)
 
     def learn(self, data, seqs, meta={'supervised':True}):
         if meta['supervised'] == True:
             for i in range(self.number_of_hidd_states):
-                hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
+                index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
                 self.hmms[i].supervised_learn(hidd_seqs, emi_seqs)
         else:
             for i in range(self.number_of_hidd_states):
-                hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
+                index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
                 self.hmms[i].unsupervised_learn(emi_seqs)
                 
-    def predict(self, data, seqs, meta={'pf':True, 'NP':200, 'q':None, 'p':None}):
-        result = None
-        q = None
-        p = None
-        if meta['pf'] == True:
+    def predict(self, data, seqs, pf=None):
+        result = []
+        for s in seqs:
+            result.append(np.zeros(s[1]-s[0]))
+            
+        if pf == None:
             for i in range(self.number_of_hidd_states):
-                hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
-                if meta['q'] == None:
-                    q = self.hmms[i].A
-                result = self.hmms[i].pf_predict(emi_seqs, meta['NP'], q, p)
+                index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
+                x = self.hmms[i].viterbi_predict(emi_seqs)
+                for j in range(len(seqs)):
+                    for k in range(len(index_seqs[j])):
+                        result[j][index_seqs[j][k]] = x[j][k]
         else:
             for i in range(self.number_of_hidd_states):
-                hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
-                result = self.hmms[i].viterbi_predict(emi_seqs)
+                index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
+                x = self.hmms[i].pf_predict(emi_seqs, pf['NP'], self.hmms[i].A, None)
+                for j in range(len(seqs)):
+                    for k in range(len(index_seqs[j])):
+                        result[j][index_seqs[j][k]] = x[j][k]
+            
         return result
-        
-C = Cluster()
-C.learn(da.room_data, [[0, 2440]], {'supervised':True})
-print(C.predict(da.room_data, [[0, 2440]], {'pf':True, 'NP':200, 'q':None, 'p':None}))
+if __name__ == '__main__':
+    C = Cluster()
+    C.learn(da.room_data, [[0, 2440]], {'supervised':True})
+    print(C.predict(da.room_data, [[0, 2440]])[0])
