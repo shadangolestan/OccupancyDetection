@@ -97,14 +97,36 @@ def get_data(room, Name):
         room_data[i][EMI] = float(emi_data[i][4])
         room_data[i][OCC] = float(occ_data[i][0])
     return room_data
+    
+def plot_occu(Actual, Prediction, Time_seq=[]):
+    xLabel = 'Time (min)'
+    yLabel = 'Occupancy Level'
+    plt.title('Occupancy Level: Actual vs Prediction')
+    plt.plot(Time_seq, Actual, 'g-', label='Actual')
+    plt.plot(Time_seq, Prediction, 'r-', label='Prediction')
+    plt.legend()
+    plt.show()
 ###############################################Testing#############################
 source = get_data(1, 'co2')
 target = get_data(4, 'co2')
 
-source_cluster = clus.Cluster()
+source_cluster = clus.Cluster(occu_intervals=[0.0,1.0,np.Inf])
 target_cluster = clus.Cluster()
 
-seqs = [[16300, 17000]]
+src_train_seqs = [[0, 16300]]
+src_test_seqs = [[16300, 16900]]
 
-source_cluster.learn(source, seqs)
-print(get_performance_seq(get_actual(source, [[16300, 17000]], source_cluster), source_cluster.predict(source, [[16300, 17000]])))
+source_cluster.learn(source, src_train_seqs)
+
+trg_train_seqs = [[0, 1440]]
+trg_test_seqs = [[16300, 16900]]
+
+target_cluster.prior(source_cluster)
+target_cluster.learn(target, trg_train_seqs)
+
+actual = get_actual(target, trg_test_seqs, target_cluster)
+prediction = target_cluster.predict(source, trg_test_seqs, pf={'NP':200}, cluster=source_cluster)
+
+
+plot_occu(actual[0], prediction[0], Time_seq=list(range(trg_test_seqs[0][0], trg_test_seqs[0][1])))
+print(get_performance_seq(actual, prediction))

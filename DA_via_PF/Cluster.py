@@ -76,33 +76,63 @@ class Cluster():
             index_seqs.append(index)
 
         return (index_seqs, hidd_seqs, emi_seqs)
+        
+    def get_all_data(self, data, seqs):
+        hidd_seqs = []
+        emi_seqs = []
+        index_seqs = []
+        for s in seqs:
+            hidd = []
+            emi = []
+            index = []
+            for j in range(s[0], s[1]):
+                index.append(j)
+                hidd.append(self.get_occu_index(data[j][da.OCC]))
+                if self.emission_name == 'Categorical':
+                    emi.append(self.get_emi_index(data[j][da.EMI]))
+                else:
+                    emi.append(data[j][da.EMI])
+
+            hidd_seqs.append(hidd)
+            emi_seqs.append(emi)
+            index_seqs.append(index)
+
+        return (index_seqs, hidd_seqs, emi_seqs)
+        
+    def prior(self, prior_cluster):
+        for i in range(self.number_of_hmms):
+            self.hmms[i].prior((prior_cluster.hmms[i].A_count, prior_cluster.hmms[i].B, prior_cluster.hmms[i].PI_count))
 
     def learn(self, data, seqs, meta={'supervised':True}):
+        all_index_seqs, all_hidd_seqs, all_emi_seqs = self.get_all_data(data, seqs)
         if meta['supervised'] == True:
-            for i in range(self.number_of_hidd_states):
+            for i in range(self.number_of_hmms):
                 index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
                 self.hmms[i].supervised_learn(hidd_seqs, emi_seqs)
+                self.hmms[i].learn_emission(hidd_seqs, emi_seqs)
         else:
-            for i in range(self.number_of_hidd_states):
+            for i in range(self.number_of_hmms):
                 index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
                 self.hmms[i].unsupervised_learn(emi_seqs)
                 
-    def predict(self, data, seqs, pf=None):
+    def predict(self, data, seqs, pf=None, cluster=None):
+        if cluster == None:
+            cluster = self
         result = []
         for s in seqs:
             result.append(np.zeros(s[1]-s[0], dtype=int))
             
         if pf == None:
-            for i in range(self.number_of_hidd_states):
+            for i in range(self.number_of_hmms):
                 index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
                 x = self.hmms[i].viterbi_predict(emi_seqs)
                 for j in range(len(seqs)):
                     for k in range(len(index_seqs[j])):
                         result[j][index_seqs[j][k]-seqs[j][0]] = x[j][k]
         else:
-            for i in range(self.number_of_hidd_states):
+            for i in range(self.number_of_hmms):
                 index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)
-                x = self.hmms[i].pf_predict(emi_seqs, pf['NP'], self.hmms[i].A, None)
+                x = self.hmms[i].pf_predict(emi_seqs, pf['NP'], cluster.hmms[i].A, None)
                 for j in range(len(seqs)):
                     for k in range(len(index_seqs[j])):
                         result[j][index_seqs[j][k]-seqs[j][0]] = x[j][k]

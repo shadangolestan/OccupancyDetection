@@ -82,6 +82,8 @@ class HMM():
     def __init__(self, number_of_hidd_states, emission_type):
         self.number_of_hidd_states = number_of_hidd_states
         
+        self.prior_ = False
+        
         self.A_count = np.ones((self.number_of_hidd_states, self.number_of_hidd_states))
         self.PI_count = np.ones(self.number_of_hidd_states)
         
@@ -92,11 +94,27 @@ class HMM():
         for i in range(self.number_of_hidd_states):
             obj = emission_type[0](emission_type[1])
             self.B.append(obj)
+    
+    def prior(self, prior):
+        self.A_count = np.copy(prior[0])
+        self.B = prior[1]
+        self.PI_count = np.copy(prior[2])
+        self.prior_ = True
 
-    def supervised_learn(self, hidd_seqs, emi_seqs, prior=None):
-        if prior != None:
-            self.A = np.copy(prior[0])
-            self.PI = np.copy(prior[2])
+    def learn_emission(self, hidd_seqs, emi_seqs):
+        ##############learning B#########################
+        if self.prior_ == False:
+            for i in range(self.number_of_hidd_states):
+                data = []
+                for j in range(len(hidd_seqs)):
+                    for k in range(len(hidd_seqs[j])):
+                        if hidd_seqs[j][k] == i:
+                            data.append(emi_seqs[j][k])
+                self.B[i].learn(data)
+        #################################################
+
+    def supervised_learn(self, hidd_seqs, emi_seqs):
+
         ###################Learning A and PI##############
         for i in hidd_seqs:
             self.PI_count[i[0]] += 1
@@ -111,15 +129,6 @@ class HMM():
         self.PI = self.PI_count / np.sum(self.PI_count)
         #################################################
         
-        ##############learning B#########################
-        for i in range(self.number_of_hidd_states):
-            data = []
-            for j in range(len(hidd_seqs)):
-                for k in range(len(hidd_seqs[j])):
-                    if hidd_seqs[j][k] == i:
-                        data.append(emi_seqs[j][k])
-            self.B[i].learn(data)
-        #################################################
         
     def unsupervised_learn(self, emi_seqs, prior=None):
         k = self.B[0].get_meta()['K'] ######Assumming B is Categoriacl#######

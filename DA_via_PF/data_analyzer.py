@@ -5,8 +5,8 @@ import sklearn.mixture as mix
 
 #########Conditional Variables###############
 room = 1 # 1 to 4
-occ = -1 # -1 to 1
-weekday = -1 # -1 to 6
+occ = 1 # -1 to 1
+weekday = 3 # -1 to 6
 holiday = -1 # -1 to 2
 start_hour = 0 # 00 to 23
 end_hour = 24 # 01 to 24 (end hour is exclusive)
@@ -16,7 +16,7 @@ end_hour = 24 # 01 to 24 (end hour is exclusive)
 #################Some Parameters############
 GMM_components = 25
 Name = 'co2' # co2 or vav
-Plot_GMM = True
+Plot_GMM = False
 Plot_Gamma = True
 ############################################
 
