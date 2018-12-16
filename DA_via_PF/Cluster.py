@@ -70,10 +70,12 @@ class Cluster():
                         emi.append(self.get_emi_index(data[j][da.EMI]))
                     else:
                         emi.append(data[j][da.EMI])
-
-            hidd_seqs.append(hidd)
-            emi_seqs.append(emi)
-            index_seqs.append(index)
+            if len(hidd)>0:
+                hidd_seqs.append(hidd)
+            if len(emi)>0:
+                emi_seqs.append(emi)
+            if len(index):
+                index_seqs.append(index)
 
         return (index_seqs, hidd_seqs, emi_seqs)
         
@@ -104,7 +106,7 @@ class Cluster():
             self.hmms[i].prior((prior_cluster.hmms[i].A_count, prior_cluster.hmms[i].B, prior_cluster.hmms[i].PI_count))
 
     def learn(self, data, seqs, meta={'supervised':True}):
-        all_index_seqs, all_hidd_seqs, all_emi_seqs = self.get_all_data(data, seqs)
+        #all_index_seqs, all_hidd_seqs, all_emi_seqs = self.get_all_data(data, seqs)
         if meta['supervised'] == True:
             for i in range(self.number_of_hmms):
                 index_seqs, hidd_seqs, emi_seqs = self.get_data_seqs(data, seqs, i)

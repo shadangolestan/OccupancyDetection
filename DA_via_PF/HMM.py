@@ -321,7 +321,12 @@ class HMM():
                 w = w / np.sum(w)
                 new_particles = np.random.choice(particles, size=number_of_particles, p=w)
                 particles = new_particles
-                x.append(np.amax(particles))
+                
+                frequency = np.zeros(self.number_of_hidd_states, dtype=int)
+                for parti_ in particles:
+                    frequency[parti_] += 1
+                x.append(np.argmax(frequency))
+
             result.append(x)
         
         return result

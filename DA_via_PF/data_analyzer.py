@@ -38,7 +38,7 @@ for i in range(room_data.shape[0]):
     room_data[i][Weekday] = float(emi_data[i][2])
     room_data[i][Holiday] = float(emi_data[i][3])
     room_data[i][EMI] = float(emi_data[i][4])
-    if float(occ_data[i][0]) > 0.0:
+    if float(occ_data[i]) > 0.0:
         room_data[i][OCC] = 1.0
 
 if __name__ == '__main__':
